@@ -25,6 +25,9 @@
   "permissions": [
     // Auto mode: allow everything. Anything not listed defaults to `ask`
     // (see docs), so this single rule removes prompting for all tools.
-    { "action": "*", "resource": "*", "effect": "allow" }
+    { "action": "*", "resource": "*", "effect": "allow" },
+    // Never read .env files. The last matching rule wins, so this must stay
+    // after the blanket allow above or it would have no effect.
+    { "action": "read", "resource": "*.env", "effect": "deny" }
   ]
 }

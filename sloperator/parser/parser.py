@@ -58,7 +58,7 @@ class Parser:
         seen: set[str] = set()
         for param in params:
             if param.lexeme in seen:
-                raise SlopSyntaxError(param.line, f"duplicate parameter name '{param.lexeme}'")
+                raise self.error(param, f"duplicate parameter name '{param.lexeme}'")
             seen.add(param.lexeme)
 
         self.function_depth += 1
@@ -82,9 +82,7 @@ class Parser:
 
     def statement(self) -> Stmt:
         if self.check(TokenType.CLANKER):
-            raise SlopSyntaxError(
-                self.peek().line, "clanker declarations are only allowed at the top level"
-            )
+            raise self.error(self.peek(), "clanker declarations are only allowed at the top level")
         if self.match(TokenType.VIBE):
             return self.if_stmt()
         if self.match(TokenType.RALPH):
@@ -115,7 +113,7 @@ class Parser:
     def ship_stmt(self) -> Ship:
         keyword = self.previous()
         if self.function_depth == 0:
-            raise SlopSyntaxError(keyword.line, "ship is only allowed inside a clanker")
+            raise self.error(keyword, "ship is only allowed inside a clanker")
         value = self.expression()
         self.terminator("ship value")
         return Ship(keyword, value)
@@ -148,23 +146,23 @@ class Parser:
         return expr
 
     def logic_and(self) -> Expr:
-        expr = self.comparison()
+        expr = self.equality()
         while self.match(TokenType.AND):
-            expr = Logical(expr, self.previous(), self.comparison())
+            expr = Logical(expr, self.previous(), self.equality())
         return expr
 
     def equality(self) -> Expr:
-        expr = self.term()
+        expr = self.comparison()
         while self.match(TokenType.EQUAL_EQUAL, TokenType.BANG_EQUAL):
-            expr = Binary(expr, self.previous(), self.term())
+            expr = Binary(expr, self.previous(), self.comparison())
         return expr
 
     def comparison(self) -> Expr:
-        expr = self.equality()
+        expr = self.term()
         while self.match(
             TokenType.LESS, TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL
         ):
-            expr = Binary(expr, self.previous(), self.equality())
+            expr = Binary(expr, self.previous(), self.term())
         return expr
 
     def term(self) -> Expr:
@@ -175,9 +173,6 @@ class Parser:
 
     def factor(self) -> Expr:
         expr = self.unary()
-        return self.factor_tail(expr)
-
-    def factor_tail(self, expr: Expr) -> Expr:
         while self.match(TokenType.STAR, TokenType.SLASH):
             expr = Binary(expr, self.previous(), self.unary())
         return expr

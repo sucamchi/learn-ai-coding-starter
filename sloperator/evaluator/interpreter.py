@@ -74,7 +74,6 @@ class Interpreter:
                 elif else_branch is not None:
                     self.execute_block(else_branch, Environment(self.environment))
             case While(condition, body):
-                self.execute_block(body, Environment(self.environment))
                 while self.condition(condition, "ralph"):
                     self.execute_block(body, Environment(self.environment))
             case Ship(_, value_expr):
@@ -116,15 +115,22 @@ class Interpreter:
             case Logical(left, operator, right):
                 return self.logical(left, operator, right)
             case Binary(left, operator, right):
-                return self.binary(self.evaluate(left), operator, self.evaluate(right))
+                return self.binary(self.evaluate(left), operator, right)
             case Call(callee, paren, arguments):
                 function = self.evaluate(callee)
-                values = [self.evaluate(argument) for argument in arguments]
+                values = tuple(self.evaluate(argument) for argument in arguments)
                 return self.call(function, values, paren)
             case _:
                 raise NotImplementedError(f"unknown expression {expression!r}")
 
     def unary(self, operator: Token, operand: Value) -> Value:
+        if operator.type is TokenType.BANG:
+            if not isinstance(operand, bool):
+                raise SlopRuntimeError(
+                    operator.line,
+                    f"operand of unary '!' must be a boolean, got {type_name(operand)}",
+                )
+            return not operand
         if operator.type is TokenType.MINUS:
             if not is_number(operand):
                 raise SlopRuntimeError(
@@ -132,7 +138,7 @@ class Interpreter:
                     f"operand of unary '-' must be a number, got {type_name(operand)}",
                 )
             return -operand
-        raise SlopRuntimeError(operator.line, "unary '!' is not implemented")
+        raise NotImplementedError(f"unknown unary operator {operator.lexeme}")
 
     def logical(self, left_expr: Expr, operator: Token, right_expr: Expr) -> Value:
         left = self.evaluate(left_expr)
@@ -152,16 +158,18 @@ class Interpreter:
                 f"{side} operand of '{operator.lexeme}' must be a boolean, got {type_name(value)}",
             )
 
-    def binary(self, left: Value, operator: Token, right: Value) -> Value:
+    def binary(self, left: Value, operator: Token, right: Expr) -> Value:
+        # Only equality short-circuits: an eager comparison of `✅` and `2`
+        # would raise, and Python's bool-is-int would corrupt the result.
         match operator.type:
             case TokenType.PLUS:
-                return self.add(left, right, operator)
+                return self.add(left, self.evaluate(right), operator)
             case TokenType.EQUAL_EQUAL:
-                return values_equal(left, right)
+                return values_equal(left, self.evaluate(right))
             case TokenType.BANG_EQUAL:
-                return not values_equal(left, right)
+                return not values_equal(left, self.evaluate(right))
             case _:
-                return self.numeric_binary(left, operator, right)
+                return self.numeric_binary(left, operator, self.evaluate(right))
 
     def numeric_binary(self, left: Value, operator: Token, right: Value) -> Value:
         if not (is_number(left) and is_number(right)):
@@ -203,7 +211,7 @@ class Interpreter:
             f"got {type_name(left)} and {type_name(right)}",
         )
 
-    def call(self, function: Value, arguments: list[Value], paren: Token) -> Value:
+    def call(self, function: Value, arguments: tuple[Value, ...], paren: Token) -> Value:
         if isinstance(function, Builtin):
             return function.call(arguments, paren.line)
         if not isinstance(function, SlopFunction):
@@ -241,7 +249,7 @@ class Interpreter:
             self.environment = previous
             self.call_depth -= 1
 
-    def hallucinate(self, arguments: list[Value], line: int) -> Value:
+    def hallucinate(self, arguments: tuple[Value, ...], line: int) -> Value:
         self.out.write(" ".join(stringify(argument) for argument in arguments) + "\n")
         return None
 
