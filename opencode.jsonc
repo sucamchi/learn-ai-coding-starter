@@ -28,6 +28,10 @@
     { "action": "*", "resource": "*", "effect": "allow" },
     // Never read .env files. The last matching rule wins, so this must stay
     // after the blanket allow above or it would have no effect.
-    { "action": "read", "resource": "*.env", "effect": "deny" }
+    { "action": "read", "resource": "*.env", "effect": "deny" },
+    // Ask before loading the example-writing skill, since invoking it writes
+    // new files into examples/ and tests/. Last match wins, so this must stay
+    // after the blanket allow above.
+    { "action": "skill", "resource": "create-test-program", "effect": "ask" }
   ]
 }
