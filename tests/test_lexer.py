@@ -39,6 +39,10 @@ def test_variation_selector_after_emoji_is_absorbed():
     assert tokens[0].lexeme == "✅️"
 
 
+def test_loadbearing_is_a_keyword():
+    assert types("loadbearing LIMIT = 1✨")[:2] == [TokenType.LOADBEARING, TokenType.IDENTIFIER]
+
+
 def test_number_literal_is_an_int():
     assert tokenize("9001")[0] == Token(TokenType.NUMBER, "9001", 9001, 1)
 
@@ -49,6 +53,10 @@ def test_hallucinate_is_an_identifier_not_a_keyword():
 
 def test_string_may_contain_em_dash_and_opening_quote():
     assert tokenize("“x — “y”")[0].literal == "x — “y"
+
+
+def test_tab_escape_is_a_tab_character():
+    assert tokenize("“name\\tscore”")[0].literal == "name\tscore"
 
 
 @pytest.mark.parametrize(
@@ -65,6 +73,7 @@ def test_string_may_contain_em_dash_and_opening_quote():
         ("“a\\", 1, "unterminated string"),
         ("a & b", 1, "unexpected character '&', did you mean '&&'?"),
         ("a | b", 1, "unexpected character '|', did you mean '||'?"),
+        ("— a comment\n@", 2, "unexpected character '@'"),
     ],
 )
 def test_lexical_errors(source: str, line: int, message: str):

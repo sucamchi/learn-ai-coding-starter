@@ -43,6 +43,24 @@ CASES = [
     ("hallucinate(later())✨\nclanker later() {\n}", "runtime", 1, "undefined variable 'later'"),
     ("clanker f() {\n}\nf = 2✨", "runtime", 3, "cannot assign to immutable binding 'f'"),
     ("slop x = 1✨\nslop x = 2✨", "runtime", 2, "'x' is already declared in this scope"),
+    (
+        "loadbearing LIMIT✨",
+        "syntax",
+        1,
+        "expected '=' after variable name, an initializer is required, found '✨'",
+    ),
+    (
+        "loadbearing LIMIT = 1✨\nLIMIT = 2✨",
+        "runtime",
+        2,
+        "cannot assign to loadbearing 'LIMIT'",
+    ),
+    (
+        "loadbearing LIMIT = 1✨\nslop LIMIT = 2✨",
+        "runtime",
+        2,
+        "'LIMIT' is already declared in this scope",
+    ),
     ("vibe 1 {\n}", "runtime", 1, "vibe condition must be a boolean, got number"),
     (
         "clanker add(a, b) {\n    ship a + b✨\n}\nhallucinate(add(1))✨",

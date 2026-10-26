@@ -19,6 +19,9 @@ def fails(source: str) -> str:
     ("expression", "expected"),
     [
         ("7 / 2", "3"),
+        ("-7 / 2", "-3"),
+        ("7 / -2", "-3"),
+        ("-7 / -2", "3"),
         ("2 - 3 * 4", "-10"),
         ("(2 - 3) * 4", "-4"),
         ("--5", "5"),
@@ -51,6 +54,13 @@ def test_short_circuit_skips_right_operand():
     assert run("hallucinate(❌ && 1 / 0 == 0)✨\nhallucinate(✅ || 1 / 0 == 0)✨") == "❌\n✅\n"
 
 
+def test_division_by_zero_is_a_runtime_error():
+    result = run_source("hallucinate(1 / 0)✨")
+    assert result.stdout == ""
+    assert result.stderr == "SlopLang runtime error at line 1: division by zero\n"
+    assert result.exit_code == 1
+
+
 def test_logical_operands_must_be_booleans():
     assert fails("hallucinate(1 && ✅)✨") == (
         "SlopLang runtime error at line 1: left operand of '&&' must be a boolean, got number"
@@ -79,6 +89,29 @@ ralph i < 3 {
 }
 hallucinate(i)✨"""
     assert run(source) == "3\n"
+
+
+def test_loadbearing_is_read_only_and_shadowable():
+    source = """loadbearing LIMIT = 100✨
+slop score = 10✨
+score = score + 1✨
+vibe ✅ {
+    slop LIMIT = 1✨
+    LIMIT = LIMIT + 1✨
+    hallucinate(LIMIT)✨
+}
+hallucinate(score + LIMIT)✨"""
+    assert run(source) == "2\n111\n"
+
+
+def test_assigning_to_loadbearing_fails_from_an_inner_scope():
+    source = """loadbearing LIMIT = 100✨
+{
+    LIMIT = 200✨
+}"""
+    assert fails(source) == (
+        "SlopLang runtime error at line 3: cannot assign to loadbearing 'LIMIT'"
+    )
 
 
 def test_function_locals_do_not_leak_and_globals_are_visible():
@@ -145,6 +178,34 @@ hallucinate(f())✨
 hallucinate(f)✨
 hallucinate(hallucinate)✨"""
     assert run(source) == "0\n-42\nstr\n✅\n❌\nnil\n<clanker f>\n<clanker hallucinate>\n"
+
+
+@pytest.mark.parametrize(
+    ("call", "expected"),
+    [
+        ("hallucinate()✨", "\n"),
+        ("hallucinate(1)✨", "1\n"),
+        ("hallucinate(1, 2)✨", "1 2\n"),
+        ("hallucinate(1, 2, 3, 4, 5)✨", "1 2 3 4 5\n"),
+        ("hallucinate(“a”, 1, ✅, ❌)✨", "a 1 ✅ ❌\n"),
+        ("hallucinate(“”, “”)✨", " \n"),
+        ("hallucinate(“hello world”, “two words”)✨", "hello world two words\n"),
+        ("hallucinate(1 + 1, “x” + “y”)✨", "2 xy\n"),
+    ],
+)
+def test_hallucinate_accepts_any_number_of_arguments(call: str, expected: str):
+    assert run(call) == expected
+
+
+def test_hallucinate_prints_one_line_per_call():
+    source = """hallucinate(“a”, “b”)✨
+hallucinate()✨
+hallucinate(“c”)✨"""
+    assert run(source) == "a b\n\nc\n"
+
+
+def test_hallucinate_returns_nil_whatever_it_prints():
+    assert run("hallucinate(hallucinate(1, 2), 3)✨") == "1 2\nnil 3\n"
 
 
 def test_variation_selector_after_emoji_is_accepted():

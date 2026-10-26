@@ -61,7 +61,8 @@ class Interpreter:
         match statement:
             case VarDecl(name, initializer, mutable):
                 value = self.evaluate(initializer)
-                self.environment.declare(name.lexeme, value, mutable, name.line)
+                kind = "variable" if mutable else "loadbearing"
+                self.environment.declare(name.lexeme, value, mutable, name.line, kind)
             case Assign(name, _, value_expr):
                 value = self.evaluate(value_expr)
                 self.environment.assign(name.lexeme, value, name.line)
@@ -79,7 +80,7 @@ class Interpreter:
             case Ship(_, value_expr):
                 raise ShipSignal(self.evaluate(value_expr))
             case Block():
-                self.execute_block(statement, Environment(self.globals))
+                self.execute_block(statement, Environment(self.environment))
             case FunctionDecl(name, _, _):
                 self.environment.declare(name.lexeme, SlopFunction(statement), False, name.line)
             case _:
@@ -160,8 +161,9 @@ class Interpreter:
             case TokenType.BANG_EQUAL:
                 return not values_equal(left, right)
             case _:
-                pass
+                return self.numeric_binary(left, operator, right)
 
+    def numeric_binary(self, left: Value, operator: Token, right: Value) -> Value:
         if not (is_number(left) and is_number(right)):
             raise SlopRuntimeError(
                 operator.line,
@@ -174,7 +176,11 @@ class Interpreter:
             case TokenType.STAR:
                 return left * right
             case TokenType.SLASH:
-                return left // right
+                if right == 0:
+                    raise SlopRuntimeError(operator.line, "division by zero")
+                # Truncate toward zero, unlike Python's floor division.
+                quotient = abs(left) // abs(right)
+                return quotient if (left < 0) == (right < 0) else -quotient
             case TokenType.LESS:
                 return left < right
             case TokenType.LESS_EQUAL:
@@ -236,9 +242,7 @@ class Interpreter:
             self.call_depth -= 1
 
     def hallucinate(self, arguments: list[Value], line: int) -> Value:
-        if len(arguments) != 1:
-            raise SlopRuntimeError(line, "hallucinate expects 1 argument")
-        self.out.write(stringify(arguments[0]) + "\n")
+        self.out.write(" ".join(stringify(argument) for argument in arguments) + "\n")
         return None
 
 

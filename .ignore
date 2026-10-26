@@ -1,0 +1,8 @@
+# Tool-local ignore list (fd, ripgrep, and other search tools). Git does not
+# read this file, so it is safe for cases where a path must stay trackable.
+#
+# uv.lock is deliberately NOT in .gitignore or .git/info/exclude: it must remain
+# visible to Git so it can be tracked and updated normally. Search tools should
+# still skip it, which is what the entry below does.
+
+uv.lock

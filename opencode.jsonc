@@ -1,0 +1,30 @@
+{
+  "model": "opencode/deepseek-v4.1-flash-free",
+  "providers": {
+    "opencode": {
+      "models": {
+        "deepseek-v4.1-flash-free": {
+          "body": {
+            "temperature": 0.1,
+            "reasoning_effort": "none"
+          }
+        }
+      }
+    }
+  },
+  "watcher": {
+    "ignore": ["logs/**"]
+  },
+  "compaction": {
+    "auto": true,
+    "keep": {
+      "tokens": 10000
+    },
+    "buffer": 20000
+  },
+  "permissions": [
+    // Auto mode: allow everything. Anything not listed defaults to `ask`
+    // (see docs), so this single rule removes prompting for all tools.
+    { "action": "*", "resource": "*", "effect": "allow" }
+  ]
+}
