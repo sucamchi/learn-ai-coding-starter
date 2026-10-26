@@ -33,5 +33,13 @@
     // new files into examples/ and tests/. Last match wins, so this must stay
     // after the blanket allow above.
     { "action": "skill", "resource": "create-test-program", "effect": "ask" }
-  ]
+  ],
+  "mcp": {
+    "servers": {
+      "context7": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp"
+      }
+    }
+  }
 }
