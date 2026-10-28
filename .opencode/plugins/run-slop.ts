@@ -39,5 +39,11 @@ export default Plugin.define({
         },
       })
     })
+
+    await ctx.tool.transform((editor) => {
+      editor.update("run_slop", (tool) => {
+        tool.description = `${tool.description}\n\nUse this tool to run individual .slop examples when checking language behavior. Use the test suite for regression testing.`
+      })
+    })
   },
 })

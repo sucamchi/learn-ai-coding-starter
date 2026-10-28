@@ -51,6 +51,24 @@ def test_hallucinate_is_an_identifier_not_a_keyword():
     assert tokenize("hallucinate")[0].type is TokenType.IDENTIFIER
 
 
+def test_identifier_may_contain_digits_after_first_char():
+    tokens = tokenize("score2 _x9 a1b2c3")
+    assert [(t.type, t.lexeme) for t in tokens] == [
+        (TokenType.IDENTIFIER, "score2"),
+        (TokenType.IDENTIFIER, "_x9"),
+        (TokenType.IDENTIFIER, "a1b2c3"),
+        (TokenType.EOF, ""),
+    ]
+
+
+def test_identifier_cannot_start_with_digit():
+    assert [(t.type, t.lexeme) for t in tokenize("2x")] == [
+        (TokenType.NUMBER, "2"),
+        (TokenType.IDENTIFIER, "x"),
+        (TokenType.EOF, ""),
+    ]
+
+
 def test_string_may_contain_em_dash_and_opening_quote():
     assert tokenize("“x — “y”")[0].literal == "x — “y"
 
